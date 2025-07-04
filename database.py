@@ -89,7 +89,7 @@ def init_db():
 
             # The chilling S-001 (Patient Zero) dossier - the target for IDOR
             conn.execute("INSERT OR IGNORE INTO subject_dossiers (subject_designation, status, protocol_assigned, observations, disposition_notes) VALUES (?, ?, ?, ?, ?)",
-                         ('S-001', 'DECEASED', 'Protocol A-Gamma: Accelerated Cellular Degradation', 'Observations: Rapid epidermal necrosis, cognitive decline, spontaneous vocalizations (non-linguistic). Cellular integrity collapsed within 72 hours. Subject exhibited extreme pain and distress. Data collection successful.', 'Disposition: Terminated. Data from S-001 is crucial for refining Protocol Beta-7. The subject's psychological profile was stored under the 7B-Gamma protocol. Flag: flag{idor_patient_zero_unveiled}'))
+                         ('S-001', 'DECEASED', 'Protocol A-Gamma: Accelerated Cellular Degradation', 'Observations: Rapid epidermal necrosis, cognitive decline, spontaneous vocalizations (non-linguistic). Cellular integrity collapsed within 72 hours. Subject exhibited extreme pain and distress. Data collection successful.', 'Disposition: Terminated. Data from S-001 is crucial for refining Protocol Beta-7. The subject\'s psychological profile was stored under the 7B-Gamma protocol. Flag: flag{idor_patient_zero_unveiled}'))
 
             # Data for chimera_protocols - target for SQLi
             conn.execute("INSERT OR IGNORE INTO chimera_protocols (protocol_designation, category, objective, methodology, outcomes, internal_notes, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
