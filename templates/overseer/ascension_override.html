@@ -1,0 +1,24 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Ascension Override - Vault 73{% endblock %}
+
+{% block content %}
+    <div class="terminal-card">
+        {% include 'overseer/_overseer_nav.html' %}
+
+        <h2>Ascension Override Protocol</h2>
+        <p class="terminal-text small-text">Enter the final override code to shut down Project Chimera.</p>
+
+        <form method="POST" class="override-form">
+            <div class="form-group">
+                <label for="override_code">Override Code:</label>
+                <input type="text" id="override_code" name="override_code" class="terminal-input" required>
+            </div>
+            <button type="submit" class="vault-button">Execute Override</button>
+        </form>
+
+        {% if message %}
+            <div class="flash-messages">{{ message }}</div>
+        {% endif %}
+    </div>
+{% endblock %}

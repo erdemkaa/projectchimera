@@ -1,0 +1,13 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Overseer Dashboard - Vault 73{% endblock %}
+
+{% block content %}
+    <div class="terminal-card">
+        {% include 'overseer/_overseer_nav.html' %}
+        
+        <h2>{{ message }}</h2>
+        <p class="terminal-text">Access Level: OVERSEER</p>
+        <p class="terminal-text small-text">Welcome to the Vault 73 Command Hub. From this terminal, you can monitor all ongoing operations related to Project Chimera. Please use the navigation tabs above to access different system modules. Remember, all actions are logged under Ascension Protocol A-212-Delta.</p>
+    </div>
+{% endblock %}

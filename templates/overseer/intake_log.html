@@ -1,0 +1,27 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Intake Log - Vault 73{% endblock %}
+
+{% block content %}
+    <div class="terminal-card large-card">
+        {% include 'overseer/_overseer_nav.html' %}
+
+        <h2>Subject Intake & Disposition</h2>
+        <p class="terminal-text small-text">{{ lore_message }}</p>
+
+        {% if logs %}
+            <div class="log-container">
+                {% for log in logs %}
+                    <div class="log-entry">
+                        <p><strong>Designation:</strong> {{ log.subject_designation }}</p>
+                        <p><strong>Intake Date:</strong> {{ log.intake_date }}</p>
+                        <p><strong>Origin:</strong> {{ log.origin }}</p>
+                        <p><strong>Disposition:</strong> {{ log.initial_disposition }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="terminal-text">No intake logs found.</p>
+        {% endif %}
+    </div>
+{% endblock %}

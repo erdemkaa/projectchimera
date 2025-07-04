@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Project Chimera{% endblock %}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Roboto+Mono:wght@400;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script src="{{ url_for('static', filename='js/terminal.js') }}" defer></script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="vault-logo">
+                <path d="M 50,50 m -45,0 a 45,45 0 1,0 90,0 a 45,45 0 1,0 -90,0" stroke="currentColor" stroke-width="10" fill="none"/>
+                <path d="M 50,50 m -20,0 a 20,20 0 1,0 40,0 a 20,20 0 1,0 -40,0" stroke="currentColor" stroke-width="6" fill="none"/>
+                <path d="M 50,0 L 50,18 M 50,82 L 50,100 M 0,50 L 18,50 M 82,50 L 100,50 M 14.6,14.6 L 28.8,28.8 M 71.2,71.2 L 85.4,85.4 M 14.6,85.4 L 28.8,71.2 M 71.2,28.8 L 85.4,14.6" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                <text x="50" y="62" font-size="30" font-family="var(--font-terminal)" text-anchor="middle" fill="currentColor">73</text>
+            </svg>
+        </div>
+    </header>
+    <div class="screen-container">
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages-container">
+                        {% for category, message in messages %}
+                            <div class="flash-messages {{ category }}-message">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <footer>
+        <p class="terminal-text small-text">&copy; 2077 Vault-Tec Corporation. All rights reserved. ASCENSION protocols active.</p>
+        {% if g.user %}
+            <p class="terminal-text small-text">Logged in as: {{ g.user['username'] }} ({{ g.user['role'] }}) | <a href="{{ url_for('logout') }}" class="vault-link">Logout</a></p>
+        {% endif %}
+    </footer>
+</body>
+</html>

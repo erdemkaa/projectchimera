@@ -1,0 +1,26 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Psycho-Aptitude Scan - Vault 73{% endblock %}
+
+{% block content %}
+    <div class="terminal-card">
+        {% include 'overseer/_overseer_nav.html' %}
+
+        <h2>Psycho-Aptitude Scan Terminal</h2>
+        <p class="terminal-text small-text">{{ lore_message }}</p>
+
+        <form method="POST" class="scan-form">
+            <div class="form-group">
+                <label for="subject_designation">Enter Subject Designation:</label>
+                <input type="text" id="subject_designation" name="subject_designation" class="terminal-input" autofocus>
+            </div>
+            <button type="submit" class="vault-button">Initiate Scan</button>
+        </form>
+
+        {% if scan_result %}
+            <div class="scan-output">
+                <p class="terminal-text">{{ scan_result|safe }}</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
