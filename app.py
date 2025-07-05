@@ -208,9 +208,9 @@ def admin_data_sync():
             try:
                 with url_request.urlopen(remote_url, timeout=5) as response:
                     content = response.read().decode('utf-8', errors='ignore')
-                    sync_result = f"Successfully fetched content from {remote_url}:
+                    sync_result = f"""Successfully fetched content from {remote_url}:
 
-{content[:200]}..."
+{content[:200]}..."""
             except Exception as e:
                 error = f"Error fetching data from URL: {e}"
         else:
