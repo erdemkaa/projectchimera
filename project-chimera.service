@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve Project Chimera
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/projectchimera
+Environment="PATH=/home/ubuntu/projectchimera/venv/bin"
+ExecStart=/home/ubuntu/projectchimera/venv/bin/gunicorn --workers 3 --bind unix:projectchimera.sock -m 007 wsgi:app
+
+[Install]
+WantedBy=multi-user.target

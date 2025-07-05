@@ -1,29 +1,20 @@
-# project_chimera/internal_flag_server.py
+from flask import Flask
+import logging
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# This is a simple, non-Flask server designed to run on an internal port.
-# Its only purpose is to serve the final flag when accessed.
+app = Flask(__name__)
 
-HOST = 'localhost'
-PORT = 8080 # A common internal port
+@app.route('/secret_flag')
+def secret_flag():
+    logger.info("Internal flag server accessed at /secret_flag")
+    return "flag{VAULT_TEC_INTERNAL_SURVEILLANCE_UNCOVERED}"
 
-class FlagServerHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        # This is the final flag, the "Ascension Override" code.
-        final_flag = "flag{ASCENSION_OVERRIDE_CODE_737351}"
-        self.wfile.write(final_flag.encode('utf-8'))
-
-def run_flag_server():
-    try:
-        server = HTTPServer((HOST, PORT), FlagServerHandler)
-        print(f"Internal flag server running on http://{HOST}:{PORT}")
-        server.serve_forever()
-    except Exception as e:
-        print(f"Could not start internal flag server: {e}")
+@app.route('/')
+def index():
+    return "Internal Vault-Tec Service: Access Denied."
 
 if __name__ == '__main__':
-    run_flag_server()
+    # This server should run on a port not exposed externally, e.g., 8080
+    app.run(host='127.0.0.1', port=8080, debug=False)

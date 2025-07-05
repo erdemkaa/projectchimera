@@ -15,3 +15,7 @@ Another one was terminated today. The official report will say 'non-compliant'. 
 Entry 77
 Date: 2078-10-15
 I found the original project directive today. It wasn't about creating the perfect soldier. It was about control. Perfect, unbreakable control. They built a back door into the whole system. A final command. The 'Ascension Override'. It's accessible from the main terminal, a hidden module. If I could get the code from the internal data node... I could end this. All of it. For better or for worse.
+
+Entry 82
+Date: 2078-11-02
+The path is simple, almost insulting. A child could have named it. After all this, the key to everything is just a file named 'secret_flag'. I can see it in the directory listing of the internal node. So close, yet so far.

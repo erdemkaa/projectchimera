@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Control Panel - Vault-Connect{% endblock %}
+
+{% block content %}
+    <div class="auth-container admin-panel">
+        <h2>Vault-Connect Admin Control Panel</h2>
+        <p>Welcome, Overseer. This panel grants you direct access to Project Chimera's core directives.</p>
+
+        {% if message and "OVERRIDE ACCEPTED" in message %}
+            <div class="victory-message">
+                <h3>OVERRIDE PROTOCOL EXECUTED.</h3>
+                <p>The Vault-Tec systems hum, then fall silent. The screens flicker, displaying a final, chilling message:</p>
+                <p><em>"Project Chimera: Terminated. The Apex Consciousness will not be cultivated. The experiments cease. The suffering ends. The screams of the subjects, finally silenced."</em></p>
+                <p>A profound, unsettling silence descends upon Vault 73. You have succeeded. The dark, monstrous heart of Project Chimera has been extinguished. The future, for what remains of humanity within these walls, is now unwritten by Vault-Tec's twisted vision. But the echoes of what was almost achieved will forever haunt these halls.</p>
+                <p>Congratulations, Overseer. You have truly saved them all. At what cost, only time will tell.</p>
+                <p><em>(You may now close this terminal. Your mission is complete.)</em></p>
+            </div>
+        {% else %}
+            <p>To initiate the final protocol, enter the Ascension Override Code.</p>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="override_code">Ascension Override Code:</label>
+                    <input type="text" id="override_code" name="override_code" required>
+                </div>
+                <button type="submit" class="btn">Execute Override</button>
+            </form>
+
+            {% if message %}
+                <div class="flash-messages">
+                    <p>{{ message }}</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

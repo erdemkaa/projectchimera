@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Vault-Connect{% endblock %}
+
+{% block content %}
+    <div class="auth-container admin-panel">
+        <h2>Vault-Connect Admin Dashboard</h2>
+        <p>Welcome, Overseer. From here, you can access all administrative functions.</p>
+
+        <nav class="admin-nav">
+            <a href="{{ url_for('ascension_override') }}">Admin Control Panel</a>
+            <li><a href="{{ url_for('admin_view_logs') }}">View System Logs</a></li>
+                <li><a href="{{ url_for('admin_data_sync') }}">Daily Report Upload</a></li>
+            </ul>
+        </nav>
+    </div>
+            <a href="{{ url_for('admin_data_sync') }}">External Data Sync</a>
+        </nav>
+    </div>
+{% endblock %}

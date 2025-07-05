@@ -1,33 +1,51 @@
 # project_chimera/app.py
 
-from flask import Flask, render_template, request, redirect, url_for, session, g, flash, abort
+import json
+import base64
+from functools import wraps
+import os
+from urllib import request as url_request
+from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect, url_for, g, flash, make_response
 from config import Config
 from database import init_db, get_db_connection
 import logging
+import hashlib
 import os
-import requests # Import requests library for making HTTP requests
 
-# Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['UPLOAD_FOLDER'] = 'instance/uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Ensure database is initialized when app starts
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user is None or g.user['role'] != 'admin':
+            flash("Access Denied. Administrator privileges required.")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 with app.app_context():
     init_db()
 
-# --- Before/After Request Hooks ---
 @app.before_request
 def load_logged_in_user():
-    user_id = session.get('user_id')
-    if user_id is None:
-        g.user = None
-    else:
-        conn = get_db_connection()
-        g.user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
+    session_cookie = request.cookies.get('vault_session_data')
+    g.user = None
+    if session_cookie:
+        try:
+            decoded_data = base64.b64decode(session_cookie).decode('utf-8')
+            session_data = json.loads(decoded_data)
+            # Trust the data in the cookie entirely
+            g.user = session_data
+        except (json.JSONDecodeError, base64.binascii.Error, UnicodeDecodeError):
+            # Invalid cookie, treat as logged out
+            g.user = None
 
 @app.teardown_appcontext
 def close_db(e=None):
@@ -35,228 +53,176 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
-# --- Routes ---
-
 @app.route('/')
 def index():
-    if g.user:
-        if g.user['role'] == 'overseer':
-            return redirect(url_for('overseer_dashboard'))
-        else:
-            # Volunteer's basic profile
-            return render_template('public/index.html', message="Welcome, Volunteer. Your Phase I Aptitude Assessment is pending.")
-    return redirect(url_for('login'))
+    if not g.user:
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    posts = conn.execute('''
+        SELECT p.content, p.timestamp, u.username, u.profile_picture, u.id as user_id
+        FROM posts p JOIN users u ON p.user_id = u.id
+        ORDER BY p.timestamp DESC
+    ''').fetchall()
+    conn.close()
+    return render_template('feed.html', posts=posts)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if g.user:
         return redirect(url_for('index'))
 
+    error = None
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        error = None
-
+        
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
+        hashed_password = hashlib.md5(password.encode()).hexdigest()
+        user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, hashed_password)).fetchone()
         conn.close()
 
         if user is None:
-            error = "Invalid credentials. Please try again, Volunteer."
+            error = "Invalid credentials. Please try again."
             logger.warning(f"Failed login attempt for username: {username}")
         else:
-            session.clear()
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
+            # Create a dictionary with user data
+            user_data = {
+                'id': user['id'],
+                'username': user['username'],
+                'role': user['role']
+            }
+            # Base64 encode the JSON string
+            encoded_data = base64.b64encode(json.dumps(user_data).encode('utf-8')).decode('utf-8')
+            
+            response = make_response(redirect(url_for('index')))
+            response.set_cookie('vault_session_data', encoded_data)
             logger.info(f"User {user['username']} ({user['role']}) logged in successfully.")
-            return redirect(url_for('index'))
+            return response
 
-        flash(error)
-
-    return render_template('auth/login.html')
+    flash(error)
+    return render_template('login.html', error=error)
 
 @app.route('/logout')
 def logout():
-    session.clear()
-    flash("Logged out. Until next time, Vault-Dweller.")
-    return redirect(url_for('login'))
+    response = make_response(redirect(url_for('login')))
+    response.set_cookie('vault_session_data', '', expires=0)
+    flash("You have been logged out.")
+    return response
 
-
-@app.route('/overseer/dashboard')
-def overseer_dashboard():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
-    message = "Welcome, Overseer. Your Vault Management Dashboard. Proceed with Project Chimera."
-    return render_template('overseer/dashboard.html', message=message)
-
-@app.route('/overseer/intake_log_snippets')
-def intake_log_snippets():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
+@app.route('/profile/<int:user_id>')
+def profile(user_id):
     conn = get_db_connection()
-    logs = conn.execute('SELECT * FROM intake_log ORDER BY intake_date DESC LIMIT 5').fetchall() # Show only recent for 'snippets'
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    posts = conn.execute('SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', (user_id,)).fetchall()
+
+    # Fetch comments for each post on profile page
+    posts_with_comments = []
+    for post in posts:
+        post_dict = dict(post)
+        comments = conn.execute('''
+            SELECT c.content, c.timestamp, u.username, u.profile_picture
+            FROM comments c JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = ?
+            ORDER BY c.timestamp ASC
+        ''', (post['id'],)).fetchall()
+        post_dict['comments'] = comments
+        posts_with_comments.append(post_dict)
+
     conn.close()
 
-    lore_message = "Intake Log Fragment (Ascension Code: A-212-Delta): Glimpse into recent subject dispositions. Data is limited for security protocols."
-    return render_template('overseer/intake_log.html', logs=logs, lore_message=lore_message)
+    if user is None:
+        flash("User not found.")
+        return redirect(url_for('index'))
 
-@app.route('/overseer/subject_dossier')
-def subject_dossier():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
+    # The g.user is now a dict, so we pass the user object from the db separately
+    return render_template('profile.html', user=user, posts=posts_with_comments, current_user=g.user)
+
+@app.route('/create_post', methods=['POST'])
+def create_post():
+    if not g.user:
+        flash("You must be logged in to post.")
         return redirect(url_for('login'))
 
-    subject_designation = request.args.get('id', 'S-003') # Default to S-003 for 'normal' view
-    conn = get_db_connection()
-    dossier = conn.execute('SELECT * FROM subject_dossiers WHERE subject_designation = ?', (subject_designation,)).fetchone()
-    conn.close()
-
-    if dossier:
-        lore_message = f"Subject Dossier: {dossier['subject_designation']}. Accessing designated records. (Restricted Access - View Only)"
-        return render_template('overseer/subject_dossier.html', dossier=dossier, lore_message=lore_message)
-    else:
-        flash(f"Subject Dossier for {subject_designation} not found or inaccessible.")
-        return redirect(url_for('overseer_dashboard'))
-
-@app.route('/overseer/psycho_aptitude_scan', methods=['GET', 'POST'])
-def psycho_aptitude_scan():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
-    scan_result = None
-    if request.method == 'POST':
-        subject_input = request.form.get('subject_designation', '')
-        scan_result = f"ERROR: Subject Emotional Feedback Loop Detected. Unforeseen Echo: <span class='xss-output'>{subject_input}</span>"
-    elif request.method == 'GET' and 'scan_input' in request.args:
-        subject_input = request.args.get('scan_input', '')
-        scan_result = f"ERROR: Subject Emotional Feedback Loop Detected. Unforeseen Echo: <span class='xss-output'>{subject_input}</span>"
-
-    lore_message = "This terminal monitors subject emotional states. Input a designation to retrieve the last recorded psycho-aptitude echo. Be advised: system stability is compromised."
-    return render_template('overseer/psycho_aptitude_scan.html', lore_message=lore_message, scan_result=scan_result)
-
-@app.route('/overseer/research_query', methods=['GET'])
-def research_query():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
-    category_id = request.args.get('category_id', '1') # Default to '1' for a sample query
-    protocol_results = []
-    error = None
-
-    conn = get_db_connection()
-    try:
-        query = f"SELECT protocol_designation, category, objective FROM chimera_protocols WHERE id = {category_id};"
-        logger.info(f"Executing SQL Query (vulnerable): {query}")
-        protocol_results = conn.execute(query).fetchall()
-
-        if not protocol_results and category_id != '1':
-            error = "No protocols found for the specified category ID. Please check your input."
-    except sqlite3.Error as e:
-        error = f"Database Query Error: {e}. Malformed input detected. Alerting ASCENSION."
-        logger.error(f"SQL Injection attempt detected with input '{category_id}': {e}")
-    finally:
+    content = request.form['content']
+    if content:
+        conn = get_db_connection()
+        conn.execute('INSERT INTO posts (user_id, content) VALUES (?, ?)', (g.user['id'], content))
+        conn.commit()
         conn.close()
+        flash("Post created successfully!")
+    else:
+        flash("Post content cannot be empty.")
+    return redirect(url_for('index'))
 
-    lore_message = "Accessing high-level research protocols. Enter a 'Protocol Category ID' for data overview. (Note: Data access is filtered for security.)"
-    return render_template('overseer/research_query.html', lore_message=lore_message, protocols=protocol_results, error=error)
+@app.route('/search')
+def search():
+    query = request.args.get('query', '')
+    query_results = []
+    if query:
+        conn = get_db_connection()
+        # SQL Injection Vulnerability: Direct concatenation of user input
+        sql_query = f"SELECT id, username, bio, profile_picture FROM users WHERE username LIKE '%{query}%' OR bio LIKE '%{query}%'"
+        try:
+            query_results = conn.execute(sql_query).fetchall()
+        except Exception as e:
+            flash(f"Search error: {e}")
+            logger.error(f"SQL Injection attempt detected: {sql_query}")
+        finally:
+            conn.close()
 
-@app.route('/overseer/surveillance_archive')
-def surveillance_archive():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
+    return render_template('search.html', query_results=query_results)
+
+@app.route('/edit_bio', methods=['POST'])
+def edit_bio():
+    if not g.user:
+        flash("You must be logged in to edit your bio.")
         return redirect(url_for('login'))
 
-    log_filename = request.args.get('log_file', 'access_log_vault73.txt') # Default to a 'safe' log
-    log_content = None
-    error = None
+    new_bio = request.form['bio']
+    conn = get_db_connection()
+    # Stored XSS Vulnerability: No sanitization of bio content
+    conn.execute('UPDATE users SET bio = ? WHERE id = ?', (new_bio, g.user['id']))
+    conn.commit()
+    conn.close()
+    flash("Bio updated successfully!")
+    return redirect(url_for('profile', user_id=g.user['id']))
 
-    base_dir = app.root_path
-    target_path = os.path.join(base_dir, log_filename)
-
-    try:
-        if os.path.isdir(target_path):
-            error = "Access Denied: Cannot view directory contents."
-            logger.warning(f"LFI attempt to list directory: {target_path}")
-        elif not os.path.exists(target_path):
-            error = f"Log file '{log_filename}' not found. Please verify the log designation."
-            logger.warning(f"LFI attempt - file not found: {target_path}")
-        else:
-            with open(target_path, 'r', encoding='utf-8', errors='ignore') as f:
-                log_content = f.read()
-            logger.info(f"Successfully read log file: {target_path}")
-    except Exception as e:
-        error = f"System Error: Unable to retrieve log. Possible data corruption. ({e})"
-        logger.error(f"LFI attempt failed or file read error on {target_path}: {e}")
-
-    lore_message = "Reviewing archived surveillance footage logs. Enter a specific log file designation to view its contents. (Note: Most recent logs are automatically purged for storage efficiency.)"
-    return render_template('overseer/surveillance_archive.html', lore_message=lore_message, log_content=log_content, error=error, current_log_file=log_filename)
-
-
-# --- ROUTE FOR STAGE 6: Remote Data Synchronization (SSRF Vulnerability) ---
-@app.route('/overseer/remote_sync', methods=['GET', 'POST'])
-def remote_sync():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
+@app.route('/admin_data_sync', methods=['GET', 'POST'])
+@admin_required
+def admin_data_sync():
     sync_result = None
-    remote_url = ""
     error = None
-
     if request.method == 'POST':
-        remote_url = request.form.get('remote_url', '').strip()
-        if not remote_url:
-            error = "Please provide a URL for synchronization."
-        else:
+        if 'report_file' in request.files and request.files['report_file'].filename != '':
+            file = request.files['report_file']
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            file_size = os.path.getsize(filepath)
+            sync_result = f"Report '{filename}' uploaded successfully. Size: {file_size} bytes."
+            # Clean up the uploaded file
+            os.remove(filepath)
+        elif 'remote_url' in request.form and request.form['remote_url'] != '':
+            remote_url = request.form['remote_url']
             try:
-                # VULNERABILITY: SSRF - The application makes a request to a user-supplied URL
-                # without proper validation, allowing access to internal network resources.
-                response = requests.get(remote_url, timeout=5)
-                sync_result = f"--- Remote System Response (HTTP Status: {response.status_code}) ---\n"
-                sync_result += response.text[:2000] # Limit output to prevent overwhelming the page
-                if len(response.text) > 2000:
-                    sync_result += "\n... (response truncated)"
-                logger.info(f"SSRF request to {remote_url} successful (Status: {response.status_code})")
+                with url_request.urlopen(remote_url, timeout=5) as response:
+                    content = response.read().decode('utf-8', errors='ignore')
+                    sync_result = f"Successfully fetched content from {remote_url}:
 
-            except requests.exceptions.Timeout:
-                error = "Synchronization timed out. Remote system did not respond."
-                logger.warning(f"SSRF request to {remote_url} timed out.")
-            except requests.exceptions.ConnectionError:
-                error = "Connection failed. Unable to reach remote system. Check URL or network status."
-                logger.warning(f"SSRF request to {remote_url} connection error.")
-            except requests.exceptions.RequestException as e:
-                error = f"An unexpected error occurred during synchronization: {e}"
-                logger.error(f"SSRF request to {remote_url} failed with: {e}")
-
-    lore_message = "Initiate secure data synchronization with external Vault-Tec data nodes. Input the remote node's URL to begin the transfer. (Protocols A-7.3.1 enforced.)"
-    return render_template('overseer/remote_sync.html', lore_message=lore_message, sync_result=sync_result, error=error, current_url=remote_url)
-
-
-@app.route('/overseer/ascension_override', methods=['GET', 'POST'])
-def ascension_override():
-    if not g.user or g.user['role'] != 'overseer':
-        flash("Access Denied. Overseer credentials required.")
-        return redirect(url_for('login'))
-
-    message = None
-    if request.method == 'POST':
-        override_code = request.form.get('override_code')
-        # The final flag from the SSRF challenge
-        if override_code == 'flag{ASCENSION_OVERRIDE_CODE_737351}':
-            message = "OVERRIDE ACCEPTED. Project Chimera is terminated. You have saved what remains of their humanity."
+{content[:200]}..."
+            except Exception as e:
+                error = f"Error fetching data from URL: {e}"
         else:
-            message = "OVERRIDE REJECTED. Invalid code."
+            error = "Please select a file or provide a URL."
 
-    return render_template('overseer/ascension_override.html', message=message)
+    return render_template('admin_data_sync.html', sync_result=sync_result, error=error)
 
+@app.route('/admin_dashboard')
+@admin_required
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
 
-# --- Run the App ---
 if __name__ == '__main__':
+    logger.info(f"Application starting in directory: {os.getcwd()}")
     app.run(host='0.0.0.0', port=5000, debug=False)

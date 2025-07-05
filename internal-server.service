@@ -1,0 +1,12 @@
+[Unit]
+Description=Internal Flag Server for Project Chimera
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/projectchimera
+ExecStart=/home/ubuntu/projectchimera/venv/bin/python3 /home/ubuntu/projectchimera/internal_flag_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

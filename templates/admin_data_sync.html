@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Report Upload - Vault-Connect{% endblock %}
+
+{% block content %}
+    <div class="auth-container">
+        <h2>Daily Report Upload</h2>
+        <p>Upload your daily experiment reports for archival and synchronization with the central Vault-Tec database.</p>
+
+        <form method="POST" class="data-sync-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="report_file">Upload Local Report:</label>
+                <input type="file" id="report_file" name="report_file" class="form-control-file">
+            </div>
+            <p class="text-muted">Or</p>
+            <div class="form-group">
+                <label for="remote_url">Submit Remote Report URL:</label>
+                <input type="text" id="remote_url" name="remote_url" class="form-control" value="{{ request.form.get('remote_url', '') }}">
+            </div>
+            <button type="submit" class="btn">Submit Report</button>
+        </form>
+
+        {% if sync_result %}
+            <div class="data-sync-output mt-4">
+                <h3>Submission Result:</h3>
+                <pre>{{ sync_result }}</pre>
+            </div>
+        {% elif error %}
+            <div class="flash-messages mt-4" style="background-color: #f8d7da; color: #721c24; border-color: #f5c6cb;">
+                <p>{{ error }}</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Search - Vault-Connect{% endblock %}
+
+{% block content %}
+    <div class="main-content">
+        <h2>Search Vault-Connect</h2>
+        <form method="GET" action="{{ url_for('search') }}" class="search-form">
+            <input type="text" name="query" placeholder="Search users..." value="{{ request.args.get('query', '') }}">
+            <button type="submit" class="btn">Search</button>
+        </form>
+
+        {% if query_results %}
+            <h3>Results for "{{ request.args.get('query', '') }}"</h3>
+            <div class="search-results">
+                {% for user in query_results %}
+                    <div class="user-card">
+                        <img src="{{ url_for('static', filename='img/' + user.profile_picture) }}" alt="Profile Picture" class="profile-pic-small">
+                        <a href="{{ url_for('profile', user_id=user.id) }}">{{ user.username }}</a>
+                        <p>{{ user.bio }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% elif request.args.get('query') %}
+            <p>No users found matching your query.</p>
+        {% endif %}
+    </div>
+{% endblock %}

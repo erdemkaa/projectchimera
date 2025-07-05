@@ -1,0 +1,13 @@
+server {
+    listen 80;
+    server_name YOUR_EC2_PUBLIC_IP_OR_DOMAIN;
+
+    location /static {
+        alias /home/ubuntu/projectchimera/static;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/ubuntu/projectchimera/projectchimera.sock;
+    }
+}

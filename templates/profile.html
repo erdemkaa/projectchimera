@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ user.username }}'s Profile - Vault-Connect{% endblock %}
+
+{% block content %}
+    <div class="profile-container">
+        <div class="profile-header">
+            <img src="{{ url_for('static', filename='img/' + user.profile_picture) }}" alt="Profile Picture" class="profile-pic-large">
+            <h2>{{ user.username }}</h2>
+            <p class="profile-role">{{ user.role | capitalize }}</p>
+        </div>
+        <div class="profile-bio">
+            <h3>Bio</h3>
+            <p>{{ user.bio }}</p>
+        </div>
+
+        {% if g.user and g.user['id'] == user.id %}
+        <div class="edit-bio-form">
+            <h3>Edit Your Bio</h3>
+            <form method="POST" action="{{ url_for('edit_bio') }}">
+                <textarea name="bio" rows="4">{{ user.bio }}</textarea>
+                <button type="submit" class="btn">Save Bio</button>
+            </form>
+            
+        </div>
+        {% endif %}
+
+        <div class="user-posts">
+            <h3>{{ user.username }}'s Posts</h3>
+            {% if posts %}
+                {% for post in posts %}
+                    <div class="post-card">
+                        <div class="post-header">
+                            <img src="{{ url_for('static', filename='img/' + user.profile_picture) }}" alt="Profile Picture" class="profile-pic-small">
+                            <span class="post-username">{{ user.username }}</span>
+                            <span class="post-timestamp">{{ post.timestamp }}</span>
+                        </div>
+                        <div class="post-content">
+                            <p>{{ post.content }}</p>
+                        </div>
+                        {% if post.comments %}
+                            <div class="comments-section">
+                                {% for comment in post.comments %}
+                                    <div class="comment-card">
+                                        <img src="{{ url_for('static', filename='img/' + comment.profile_picture) }}" alt="Profile Picture" class="profile-pic-small">
+                                        <span class="comment-username">{{ comment.username }}</span>
+                                        <span class="comment-content">{{ comment.content }}</span>
+                                        <span class="comment-timestamp">{{ comment.timestamp }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No posts yet.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

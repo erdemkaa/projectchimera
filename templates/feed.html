@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Vault-Connect Feed{% endblock %}
+
+{% block content %}
+    <div class="main-content">
+        <div class="post-form-container">
+            <h3>What's on your mind, {{ g.user['username'] }}?</h3>
+            <form method="POST" action="{{ url_for('create_post') }}">
+                <textarea name="content" placeholder="Share your thoughts..." required></textarea>
+                <button type="submit" class="btn">Post</button>
+            </form>
+        </div>
+
+        <div class="posts-container">
+            {% for post in posts %}
+                <div class="post-card">
+                    <div class="post-header">
+                        <img src="{{ url_for('static', filename='img/' + post.profile_picture) }}" alt="Profile Picture" class="profile-pic-small">
+                        <a href="{{ url_for('profile', user_id=post.user_id) }}" class="post-username">{{ post.username }}</a>
+                        <span class="post-timestamp">{{ post.timestamp }}</span>
+                    </div>
+                    <div class="post-content">
+                        <p>{{ post.content }}</p>
+                    </div>
+                    {% if post.comments %}
+                        <div class="comments-section">
+                            {% for comment in post.comments %}
+                                <div class="comment-card">
+                                    <img src="{{ url_for('static', filename='img/' + comment.profile_picture) }}" alt="Profile Picture" class="profile-pic-small">
+                                    <span class="comment-username">{{ comment.username }}</span>
+                                    <span class="comment-content">{{ comment.content }}</span>
+                                    <span class="comment-timestamp">{{ comment.timestamp }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
