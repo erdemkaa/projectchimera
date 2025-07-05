@@ -62,7 +62,7 @@ def init_db():
 
             # User for bruteforce (password: password)
             conn.execute("INSERT INTO users (username, password, role, bio, profile_picture) VALUES (?, ?, ?, ?, ?)",
-                         ('overseer', 'e10adc3949ba59abbe56e057f20f883e', 'The one in charge.', 'overseer.png', 'user'),  # Password is '123456')
+                         ('overseer', 'e10adc3949ba59abbe56e057f20f883e', 'The one in charge.', 'overseer.png', 'user')) # Password is '123456'
 
             # Admin user (for SQLi target)
             conn.execute("INSERT INTO users (username, password, role, bio, profile_picture) VALUES (?, ?, ?, ?, ?)",
