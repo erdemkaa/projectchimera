@@ -6,8 +6,9 @@ After=network.target
 User=ubuntu
 Group=www-data
 WorkingDirectory=/home/ubuntu/projectchimera
+RuntimeDirectory=projectchimera
 Environment="PATH=/home/ubuntu/projectchimera/venv/bin"
-ExecStart=/home/ubuntu/projectchimera/venv/bin/gunicorn --workers 2 --bind unix:projectchimera.sock -m 007 wsgi:app
+ExecStart=/home/ubuntu/projectchimera/venv/bin/gunicorn --workers 2 --bind unix:/run/projectchimera/projectchimera.sock -m 007 wsgi:app
 
 [Install]
 WantedBy=multi-user.target
